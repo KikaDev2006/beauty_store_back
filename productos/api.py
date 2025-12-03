@@ -1,83 +1,48 @@
 from typing import List
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from ninja import NinjaAPI
 
 from .models import Producto
 from .schemas import ProductoCreate, ProductoOut, ProductoUpdate
 
-api = Router()
+api = NinjaAPI(version="1.0.0", urls_namespace="productos")
 
 
 @api.get("", response=List[ProductoOut])
 def list_productos(request):
-	productos = Producto.objects.all()
-	result = []
-	for p in productos:
-		result.append({
-			"id": p.id,
-			"nombre": p.nombre,
-			"descripcion": p.descripcion,
-			"precio": p.precio,
-			"estado": p.estado,
-			"id_categoria": p.id_categoria_id,
-			"imagen": p.imagen.url if p.imagen else None,
-		})
-	return result
+    """List all productos"""
+    return Producto.objects.all()
 
 
 @api.get("/{producto_id}", response=ProductoOut)
 def get_producto(request, producto_id: int):
-	p = get_object_or_404(Producto, id=producto_id)
-	return {
-		"id": p.id,
-		"nombre": p.nombre,
-		"descripcion": p.descripcion,
-		"precio": p.precio,
-		"estado": p.estado,
-		"id_categoria": p.id_categoria_id,
-		"imagen": p.imagen.url if p.imagen else None,
-	}
+    """Retrieve a single producto by id"""
+    return get_object_or_404(Producto, id=producto_id)
 
 
 @api.post("", response=ProductoOut)
 def create_producto(request, payload: ProductoCreate):
-	data = payload.dict()
-	categoria_id = data.pop("id_categoria")
-	imagen = data.pop("imagen", None)
-	producto = Producto.objects.create(id_categoria_id=categoria_id, **data)
-	# nota: si quieres manejar subida de archivos, hay que aceptar UploadedFile
-	return {
-		"id": producto.id,
-		"nombre": producto.nombre,
-		"descripcion": producto.descripcion,
-		"precio": producto.precio,
-		"estado": producto.estado,
-		"id_categoria": producto.id_categoria_id,
-		"imagen": producto.imagen.url if producto.imagen else None,
-	}
+    """Create a new producto"""
+    data = payload.dict()
+    categoria_id = data.pop("id_categoria")
+    producto = Producto.objects.create(id_categoria_id=categoria_id, **data)
+    return producto
 
 
 @api.put("/{producto_id}", response=ProductoOut)
 def update_producto(request, producto_id: int, payload: ProductoUpdate):
-	data = payload.dict(exclude_unset=True)
-	if "id_categoria" in data:
-		data["id_categoria_id"] = data.pop("id_categoria")
-	Producto.objects.filter(id=producto_id).update(**data)
-	p = get_object_or_404(Producto, id=producto_id)
-	return {
-		"id": p.id,
-		"nombre": p.nombre,
-		"descripcion": p.descripcion,
-		"precio": p.precio,
-		"estado": p.estado,
-		"id_categoria": p.id_categoria_id,
-		"imagen": p.imagen.url if p.imagen else None,
-	}
+    """Update a producto fully or partially"""
+    data = payload.dict(exclude_unset=True)
+    if "id_categoria" in data:
+        data["id_categoria_id"] = data.pop("id_categoria")
+    Producto.objects.filter(id=producto_id).update(**data)
+    return get_object_or_404(Producto, id=producto_id)
 
 
 @api.delete("/{producto_id}")
 def delete_producto(request, producto_id: int):
-	p = get_object_or_404(Producto, id=producto_id)
-	p.delete()
-	return {"ok": True}
+    """Delete a producto"""
+    p = get_object_or_404(Producto, id=producto_id)
+    p.delete()
+    return {"ok": True}
 
